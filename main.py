@@ -1,10 +1,16 @@
+import os
+
 import telebot
 
+from dotenv import load_dotenv
 from google_currency import convert
 from telebot import types
 import json
 
-bot = telebot.TeleBot('6657770013:AAF3XsISt2fVHVLPL0v9HpeaeIz_haucocY')
+load_dotenv()
+key = os.getenv("KEY")
+
+bot = telebot.TeleBot(key)
 
 amount = 0
 
@@ -39,10 +45,23 @@ def input_summa(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
-    values = call.data.split('/')
+    if call.data != 'other_currency':
+        values = call.data.split('/')
+        total_values = convert(values[0], values[1], amount)
+        data = json.loads(total_values)
+        bot.send_message(call.message.chat.id, f'Результат: {data["amount"]} {values[1]}')
+        bot.send_message(call.message.chat.id, f'Вы можете выбрать другую валюту или нажмите /start, чтобы ввести новую сумму.')
+    else:
+        bot.send_message(call.message.chat.id, f'Введите код валюты в формате: RUB/USD, где RUB - ваша валюта, а USD - во что будем конвертировать:')
+        bot.register_next_step_handler(call.message, my_currency)
+
+
+def my_currency(message):
+    values = message.text.split('/')
     total_values = convert(values[0], values[1], amount)
     data = json.loads(total_values)
-    bot.send_message(call.message.chat.id, f'Результат: {data["amount"]} {values[1]}')
+    bot.send_message(message.chat.id, f'Результат: {data["amount"]} {values[1]}')
+    bot.send_message(message.chat.id, f'Вы можете выбрать другую валюту или нажмите /start, чтобы ввести новую сумму.')
 
 
 bot.infinity_polling()
